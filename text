@@ -1,0 +1,16 @@
+NODES
+X,9,8
+Y,7,15
+Z,13,2
+U,1,1
+V,20,20
+W,5,13
+T,3,6
+
+SEGMENTS
+X,T
+Y,Z
+U,T
+Z,W
+X,W
+U,V
