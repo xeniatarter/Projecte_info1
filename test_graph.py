@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plot
 from graph import *
+from node import Node
 def CreateGraph_1 ():
     G = Graph()
 
@@ -83,13 +84,14 @@ Plot(G)
 PlotNode(G,"BCN")
 
 
-
-
-
-
-
-
-
-
-
-
+def CreateGraph_3():
+    G=Graph()
+    TextFile(G,'text')
+    return G
+G = CreateGraph_3()
+n = GetClosest(G,12,2)
+print(n.name) #La respuesta debe ser Z
+n = GetClosest(G,3,6)
+print(n.name) #La respuesta debe ser T
+Plot(G)
+PlotNode(G,"X")

@@ -20,7 +20,7 @@ def AddSegment (g,OriginNode, DestinationNode):
         return False
     segment = Segment(f"{OriginNode}-{DestinationNode}",origin, destination)
     g.segments.append(segment)
-    origin.neighbors.append(destination) #Afegim el nodo destino a la llista de veïns del node origin
+    origin.AddNeighbor(destination) #Afegim el nodo destino a la llista de veïns del node origin
     return True
 
 def GetClosest(g,x,y): #Busca el nodo más cercano a una posición dada en el gráfico
@@ -69,3 +69,26 @@ def PlotNode (g,NameOrigin):
     plot.show()
     return True
 
+def TextFile (g,text):
+    file = open(text,'r')
+    lines = file.readlines()
+    file.close()
+
+    section = None #De momento no estamos en ninguna sección
+    for line in lines: #Coge una línea una a una y la guarda en la variable line
+        line = line.strip()
+        if line == "NODES":
+            section = "Nodes"
+            continue  #Salta a la siguiente vuelta del bucle, ignora el resto de código dentro el bucle
+        elif line == "SEGMENTS":
+            section = "Segments"
+            continue
+        if not line:
+            continue
+
+        if section == 'Nodes':
+            name, x, y = line.split(",")
+            g.nodes.append(Node(name, float(x),float(y)))
+        elif section == 'Segments':
+            origin, destination = line.split(",")
+            AddSegment(g, origin, destination)
