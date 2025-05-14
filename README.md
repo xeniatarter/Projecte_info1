@@ -1,3 +1,5 @@
+Som alumnes de la EETAC que estem cursant Informàtica 1. Aquest projecte és de gran rellevància pel desenvolupament de la nostra carrera ja que ens permet connectar rutes aèries de manera més eficaç. 
+
 VIDEO VERSIÓ 1
 https://drive.google.com/file/d/1EnDimTmfRfsRA3DwiZCLXkaX2EzNJKo6/view?usp=share_link
 
