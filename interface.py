@@ -2,9 +2,16 @@ import tkinter as tk
 from tkinter import filedialog, simpledialog, messagebox
 from graph import *
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg #Puente entre matplotlib y tkinter, permite poner un gráfico dentro de tkinter
+from matplotlib.widgets import Cursor
+from matplotlib.backend_bases import key_press_handler #Es para que reaccione al ratón
 from path import find_shortest_path
 from node import Node
 import matplotlib.pyplot as plot
+from airspace import AirSpace, CreateGraph4, AddNavPoint, AddAirport, AddNavSegment
+from navpoints import NavPoint
+from navsegments import NavSegment
+from navairports import NavAirport
+
 
 def ShowExampleGraph():
     global window_graph
@@ -47,6 +54,28 @@ def PlotGraph(G):
     canvas = FigureCanvasTkAgg(fig, master=fig_frame)  # Inserta el gráfico en tkinter
     canvas.draw()
     canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+
+
+    #Para hacer zoom y mover el grafo con el ratón
+    def on_scroll(event):
+        cur_xlim=ax.get_xlim() #Busca los limites  en x e y
+        cur_ylim=ax.get_ylim()
+
+        xdata=event.xdata #Busca la posición del evento (ratón)
+        ydata=event.ydata
+
+        if xdata is None or ydata is None:
+            return #Si el ratón está fuera del grafo no hace nada
+
+        scale_factor=1.2 if event.button == 'up' else 1/1.2 #Cuanto zoom a no zoom hace
+        ax.set_xlim([xdata - (xdata - cur_xlim[0]) * scale_factor,xdata + (cur_xlim[1] - xdata) * scale_factor]) #Hace el zoom centrado en el ratón
+        ax.set_ylim([ydata - (ydata - cur_ylim[0]) * scale_factor,ydata + (cur_ylim[1] - ydata) * scale_factor])
+        fig.canvas.draw_idle()
+
+
+
+
 
 def AddNodeInterface():
     global window_graph
@@ -127,8 +156,27 @@ def FindShortestPath():
     canvas.draw()
     canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
+#Pasamos de Airspace a Graph
+def AirspacetoGraph(g,a):
+    origin = ''
+    destination = ''
+    for n in a.navpoints:
+        AddNode(g, Node(n.name, n.longitude, n.latitude))
+    for s in a.navsegments:
+        for navPoint in a.navpoints:
+            if navPoint.number == s.origin_number:
+                origin = navPoint.name
+            elif navPoint.number == s.destination_number:
+                destination = navPoint.name
+        AddSegment(g, origin, destination)
 
-
+#Mostramos el grafo en función de los ficheros
+def ShowAirSpaceGraph():
+    global window_graph
+    window_graph = Graph()
+    a = CreateGraph4("Cat_nav.txt","Cat_seg.txt","Cat_aer.txt")
+    AirspacetoGraph(window_graph, a)
+    PlotGraph(window_graph)
 
 
 
@@ -170,5 +218,8 @@ add_node_button.pack(pady=10)
 
 add_segment_button = tk.Button(button_frame, text="Add segment", command=AddSegmentInterface)
 add_segment_button.pack(pady=10)
+
+airspace_button = tk.Button(button_frame, text="Catalunya Airspace", command=ShowAirSpaceGraph)
+airspace_button.pack(pady=10)
 
 root.mainloop()
