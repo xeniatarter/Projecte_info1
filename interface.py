@@ -39,7 +39,7 @@ def PlotGraph(G):
     ax.set_title("Graph Visualization")
     for node in G.nodes:
         ax.scatter(node.x, node.y, label=node.name, color='blue')
-        ax.text(node.x, node.y, node.name, fontsize=12, ha='right', color='red')
+        ax.text(node.x+1, node.y+0.3, node.name, fontsize=12, ha='right', color='red')
     for segment in G.segments:
         ax.plot([segment.origin.x, segment.destination.x], [segment.origin.y, segment.destination.y], color='black')
         ax.annotate("", xy=(segment.destination.x, segment.destination.y), xytext=(segment.origin.x, segment.origin.y), arrowprops=dict(arrowstyle="->", color='black', lw=1.5, mutation_scale=15))
@@ -128,9 +128,16 @@ def FindShortestPath():
     canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
 
+
+
+
+
+
+
 # Interfaz gráfica
 window_graph = Graph()
 root = tk.Tk()
+boton_distancia=tk.BooleanVar(value=False)
 root.title("Graph viewer")
 root.geometry("1000x600")  # Cambié el tamaño para dar más espacio al gráfico
 
@@ -165,4 +172,3 @@ add_segment_button = tk.Button(button_frame, text="Add segment", command=AddSegm
 add_segment_button.pack(pady=10)
 
 root.mainloop()
-

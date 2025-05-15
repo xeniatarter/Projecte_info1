@@ -42,8 +42,3 @@ def find_shortest_path(graph, start_name, end_name):
         current = previous_nodes[current]
     path.insert(0, start_node)
     return path
-
-
-
-
-
