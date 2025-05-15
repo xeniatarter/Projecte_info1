@@ -4,6 +4,7 @@ from graph import *
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg #Puente entre matplotlib y tkinter, permite poner un gráfico dentro de tkinter
 from matplotlib.widgets import Cursor
 from matplotlib.backend_bases import key_press_handler #Es para que reaccione al ratón
+from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
 from path import find_shortest_path
 from node import Node
 import matplotlib.pyplot as plot
@@ -46,7 +47,7 @@ def PlotGraph(G):
     ax.set_title("Graph Visualization")
     for node in G.nodes:
         ax.scatter(node.x, node.y, label=node.name, color='blue')
-        ax.text(node.x+1, node.y+0.3, node.name, fontsize=12, ha='right', color='red')
+        ax.text(node.x+0.1, node.y+0.1, node.name, fontsize=8, ha='right', color='purple')
     for segment in G.segments:
         ax.plot([segment.origin.x, segment.destination.x], [segment.origin.y, segment.destination.y], color='black')
         ax.annotate("", xy=(segment.destination.x, segment.destination.y), xytext=(segment.origin.x, segment.origin.y), arrowprops=dict(arrowstyle="->", color='black', lw=1.5, mutation_scale=15))
@@ -55,6 +56,10 @@ def PlotGraph(G):
     canvas.draw()
     canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
+    #Añadimos una barra de herramientas
+    toolbar = NavigationToolbar2Tk(canvas, fig_frame)
+    toolbar.update()
+    toolbar.pack(side=tk.BOTTOM, fill=tk.X)
 
 
     #Para hacer zoom y mover el grafo con el ratón
@@ -73,6 +78,25 @@ def PlotGraph(G):
         ax.set_ylim([ydata - (ydata - cur_ylim[0]) * scale_factor,ydata + (cur_ylim[1] - ydata) * scale_factor])
         fig.canvas.draw_idle()
 
+    def on_press(event):
+        if event.button != 3: #Mira si se ha pulsado el botón derecho del ratón
+            return
+        global x0, y0
+        x0, y0 = event.xdata, event.ydata #Guarda la posición del ratón en las coordenadas
+
+    def on_motion(event):
+        if event.button != 3 or x0 is None:
+            return
+        dx = event.xdata - x0 #Calcula la distancia que se mueve el ratón
+        dy = event.ydata - y0
+        ax.set_xlim(ax.get_xlim() - dx) #Pone unos límites nuevos
+        ax.set_ylim(ax.get_ylim() - dy)
+        fig.canvas.draw() #Redibuja el gráfico
+
+
+    fig.canvas.mpl_connect('scroll_event', on_scroll)
+    fig.canvas.mpl_connect('button_press_event', on_press)
+    fig.canvas.mpl_connect('motion_notify_event', on_motion)
 
 
 
@@ -156,6 +180,8 @@ def FindShortestPath():
     canvas.draw()
     canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
+
+
 #Pasamos de Airspace a Graph
 def AirspacetoGraph(g,a):
     origin = ''
@@ -171,12 +197,27 @@ def AirspacetoGraph(g,a):
         AddSegment(g, origin, destination)
 
 #Mostramos el grafo en función de los ficheros
-def ShowAirSpaceGraph():
+def ShowAirSpaceGraph1():
     global window_graph
     window_graph = Graph()
     a = CreateGraph4("Cat_nav.txt","Cat_seg.txt","Cat_aer.txt")
     AirspacetoGraph(window_graph, a)
     PlotGraph(window_graph)
+
+def ShowAirSpaceGraph2():
+    global window_graph
+    window_graph = Graph()
+    a = CreateGraph4("ECAC_nav.txt","ECAC_seg.txt","ECAC_aer.txt")
+    AirspacetoGraph(window_graph, a)
+    PlotGraph(window_graph)
+
+def ShowAirSpaceGraph3():
+    global window_graph
+    window_graph = Graph()
+    a = CreateGraph4("Spain_nav.txt","Spain_seg.txt","Spain_aer.txt")
+    AirspacetoGraph(window_graph, a)
+    PlotGraph(window_graph)
+
 
 
 
@@ -219,7 +260,13 @@ add_node_button.pack(pady=10)
 add_segment_button = tk.Button(button_frame, text="Add segment", command=AddSegmentInterface)
 add_segment_button.pack(pady=10)
 
-airspace_button = tk.Button(button_frame, text="Catalunya Airspace", command=ShowAirSpaceGraph)
-airspace_button.pack(pady=10)
+airspace_button1 = tk.Button(button_frame, text="Catalunya Airspace", command=ShowAirSpaceGraph1)
+airspace_button1.pack(pady=10)
+
+airspace_button2=tk.Button(button_frame,text="Europe Airspace",command=ShowAirSpaceGraph2)
+airspace_button2.pack(pady=10)
+
+airspace_button3=tk.Button(button_frame,text="Spain Airspace",command=ShowAirSpaceGraph3)
+airspace_button3.pack(pady=10)
 
 root.mainloop()
