@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog, simpledialog, messagebox
+from tkinter import filedialog, simpledialog, messagebox, ttk
 from graph import *
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg #Puente entre matplotlib y tkinter, permite poner un gráfico dentro de tkinter
 from matplotlib.widgets import Cursor
@@ -55,6 +55,7 @@ def PlotGraph(G):
     canvas = FigureCanvasTkAgg(fig, master=fig_frame)  # Inserta el gráfico en tkinter
     canvas.draw()
     canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
 
     #Añadimos una barra de herramientas
     toolbar = NavigationToolbar2Tk(canvas, fig_frame)
@@ -231,42 +232,70 @@ root.title("Graph viewer")
 root.geometry("1000x600")  # Cambié el tamaño para dar más espacio al gráfico
 
 # Crear un frame para los botones
-button_frame = tk.Frame(root, width=250)  # Frame de botones, especificamos un tamaño fijo
-button_frame.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)  # Coloca los botones a la izquierda
+left_panel = tk.Frame(root, width=250)  # Frame de botones, especificamos un tamaño fijo
+left_panel.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)  # Coloca los botones a la izquierda
+
+#Creamos pestañas utilizando Notebook
+tabla_control = ttk.Notebook(left_panel)
+pestanya1 = tk.Frame(tabla_control)
+pestanya2 = tk.Frame(tabla_control)
+pestanya3 = tk.Frame(tabla_control)
+pestanya4 = tk.Frame(tabla_control)
+tabla_control.add(pestanya1, text="Graphs")
+tabla_control.add(pestanya2, text="Airspace")
+tabla_control.add(pestanya3, text="Extra funcionalities")
+tabla_control.add(pestanya4, text="Team")
+
+#Mostrar el notebook (pestañas)
+tabla_control.pack(expand=True,fill='both')
 
 # Crear un frame para el gráfico
 fig_frame = tk.Frame(root)
 fig_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)  # Coloca el gráfico a la derecha
 
 # Botones de la interfaz (en el frame de botones)
-show_example_button = tk.Button(button_frame, text="Show example graph", command=ShowExampleGraph)
+show_example_button = tk.Button(pestanya1, text="Show example graph", command=ShowExampleGraph)
 show_example_button.pack(pady=10)
 
-show_custom_button = tk.Button(button_frame, text="Show invented graph", command=ShowCustomGraph)
+show_custom_button = tk.Button(pestanya1, text="Show invented graph", command=ShowCustomGraph)
 show_custom_button.pack(pady=10)
 
-load_file_button = tk.Button(button_frame, text="Load graph from file", command=LoadGraph)
+load_file_button = tk.Button(pestanya1, text="Load graph from file", command=LoadGraph)
 load_file_button.pack(pady=10)
 
-select_node_button = tk.Button(button_frame, text="Select nodes for neighbours", command=SelectNode)
-select_node_button.pack(pady=10)
-
-find_path_button = tk.Button(button_frame, text="Shortest path between nodes", command=FindShortestPath)
-find_path_button.pack(pady=10)
-
-add_node_button = tk.Button(button_frame, text="Add node", command=AddNodeInterface)
-add_node_button.pack(pady=10)
-
-add_segment_button = tk.Button(button_frame, text="Add segment", command=AddSegmentInterface)
-add_segment_button.pack(pady=10)
-
-airspace_button1 = tk.Button(button_frame, text="Catalunya Airspace", command=ShowAirSpaceGraph1)
+airspace_button1 = tk.Button(pestanya2, text="Catalunya Airspace", command=ShowAirSpaceGraph1)
 airspace_button1.pack(pady=10)
 
-airspace_button2=tk.Button(button_frame,text="Europe Airspace",command=ShowAirSpaceGraph2)
+airspace_button2=tk.Button(pestanya2,text="Europe Airspace",command=ShowAirSpaceGraph2)
 airspace_button2.pack(pady=10)
 
-airspace_button3=tk.Button(button_frame,text="Spain Airspace",command=ShowAirSpaceGraph3)
+airspace_button3=tk.Button(pestanya2,text="Spain Airspace",command=ShowAirSpaceGraph3)
 airspace_button3.pack(pady=10)
+
+add_node_button = tk.Button(pestanya1, text="Add node", command=AddNodeInterface)
+add_node_button.pack(pady=10)
+
+add_node_button = tk.Button(pestanya2, text="Add node", command=AddNodeInterface)
+add_node_button.pack(pady=10)
+
+add_segment_button = tk.Button(pestanya1, text="Add segment", command=AddSegmentInterface)
+add_segment_button.pack(pady=10)
+
+add_segment_button = tk.Button(pestanya2, text="Add segment", command=AddSegmentInterface)
+add_segment_button.pack(pady=10)
+
+select_node_button = tk.Button(pestanya1, text="Select nodes for neighbours", command=SelectNode)
+select_node_button.pack(pady=10)
+
+select_node_button = tk.Button(pestanya2, text="Select nodes for neighbours", command=SelectNode)
+select_node_button.pack(pady=10)
+
+find_path_button = tk.Button(pestanya1, text="Shortest path between nodes", command=FindShortestPath)
+find_path_button.pack(pady=10)
+
+find_path_button = tk.Button(pestanya2, text="Shortest path between nodes", command=FindShortestPath)
+find_path_button.pack(pady=10)
+
+
 
 root.mainloop()
