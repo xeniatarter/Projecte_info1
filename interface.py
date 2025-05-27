@@ -3,6 +3,7 @@ from tkinter import filedialog, simpledialog, messagebox, ttk
 from graph import *
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg #Puente entre matplotlib y tkinter, permite poner un gráfico dentro de tkinter
 from matplotlib.widgets import Cursor
+from matplotlib.patches import FancyArrowPatch
 from matplotlib.backend_bases import key_press_handler #Es para que reaccione al ratón
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
 from path import find_shortest_path
@@ -29,83 +30,120 @@ def LoadGraph():
     window_graph = CreateGraph_3("text")  # Llamamos a CreateGraph_3 desde graph.py (si existe)
     PlotGraph(window_graph)
 
+
 def SelectNode():
     global window_graph
     node_name = simpledialog.askstring("Entry", "Introduce the node name:", parent=root)
     neighbors = GetNeighbors(window_graph, node_name)
 
-    if neighbors:
-        neighbor_names = [n.name for n in neighbors]
-        messagebox.showinfo("Neighbors", f"Neighbors of {node_name}: {', '.join(neighbor_names)}")
-    else:
-        messagebox.showerror("Error", "Node not found or has no neighbors.")
+    if not neighbors:
+        messagebox.showerror("Error", f"No neighbors found for node '{node_name}'.")
+        return
+
+    neighbor_names = [n.name for n in neighbors]
+    messagebox.showinfo("Neighbors", f"Neighbors of {node_name}: {', '.join(neighbor_names)}")
+
+    for widget in fig_frame.winfo_children():
+        widget.destroy()
+
+    fig, ax = plot.subplots(figsize=(6, 6))
+    ax.set_title(f"Neighbors of {node_name}")
+
+    for node in window_graph.nodes:
+        if node.name == node_name:
+            color = 'blue'
+        elif node in neighbors:
+            color = 'lightskyblue'
+        else:
+            color = 'lightgray'
+        ax.scatter(node.x, node.y, color=color, s=100)
+        txt = ax.text(node.x, node.y, node.name, fontsize=12, ha='right', clip_on=True)
+
+    for segment in window_graph.segments:
+        if (segment.origin.name == node_name and segment.destination in neighbors) or (segment.destination.name == node_name and segment.origin in neighbors):
+            seg_color = 'lightskyblue'
+            lw = 2
+        else:
+            seg_color = 'lightgray'
+            lw = 1
+
+        arrow = FancyArrowPatch((segment.origin.x, segment.origin.y),(segment.destination.x, segment.destination.y),arrowstyle='->',color=seg_color,mutation_scale=15,lw=lw,clip_on=True)
+        ax.add_patch(arrow)
+
+    ax.set_aspect('equal', adjustable='box')
+    ZoomGraph(fig, ax, fig_frame)
+
 
 def PlotGraph(G):
     for widget in fig_frame.winfo_children():
-        widget.destroy()  # Elimina cualquier gráfico anterior
+        widget.destroy() #Elimina cualquier gráfico anterior
+
     fig, ax = plot.subplots(figsize=(6, 6))
     ax.set_title("Graph Visualization")
+
     for node in G.nodes:
-        ax.scatter(node.x, node.y, label=node.name, color='blue')
+        ax.scatter(node.x, node.y, color='blue')
         if show_nodes.get():
-            ax.text(node.x+0.1, node.y+0.1, node.name, fontsize=8, ha='right', color='purple')
+            txt = ax.text(node.x + 0.1, node.y + 0.1, node.name, fontsize=8, ha='right', color='purple')
+            txt.set_clip_on(True)  #Para recortar el texto que sale al hacer zoom
+
     for segment in G.segments:
-        ax.plot([segment.origin.x, segment.destination.x], [segment.origin.y, segment.destination.y], color='black')
-        ax.annotate("", xy=(segment.destination.x, segment.destination.y), xytext=(segment.origin.x, segment.origin.y), arrowprops=dict(arrowstyle="->", color='black', lw=1.5, mutation_scale=15))
+        arrow = FancyArrowPatch((segment.origin.x, segment.origin.y),(segment.destination.x, segment.destination.y),arrowstyle='->',color='black',mutation_scale=15,lw=1.5,clip_on=True)
+        ax.add_patch(arrow)
+
         if show_distance.get(): #Calculamos distancia Eucaldiana
             dx = segment.destination.x - segment.origin.x
             dy = segment.destination.y - segment.origin.y
-            distance = round((dx ** 2 + dy ** 2) ** 0.5,2) #Redondea a solo dos decimales
+            distance = round((dx ** 2 + dy ** 2) ** 0.5, 2) #Redondea a solo dos decimales
             mid_x = (segment.origin.x + segment.destination.x) / 2
             mid_y = (segment.origin.y + segment.destination.y) / 2
-            ax.text(mid_x, mid_y, f"{distance:.2f}", fontsize=8, color='red', ha='center', va='center')
-    ax.set_aspect('equal',adjustable='datalim')
-    canvas = FigureCanvasTkAgg(fig, master=fig_frame)  # Inserta el gráfico en tkinter
+            dist_txt = ax.text(mid_x, mid_y, f"{distance:.2f}", fontsize=8, color='red', ha='center', va='center')
+            dist_txt.set_clip_on(True)
+
+    ax.set_aspect('equal', adjustable='box')
+    ZoomGraph(fig, ax, fig_frame)
+
+
+def ZoomGraph(fig, ax, parent_frame):
+    canvas = FigureCanvasTkAgg(fig, master=parent_frame)
     canvas.draw()
     canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-    #Añadimos una barra de herramientas
-    toolbar = NavigationToolbar2Tk(canvas, fig_frame)
+    toolbar = NavigationToolbar2Tk(canvas, parent_frame)
     toolbar.update()
     toolbar.pack(side=tk.BOTTOM, fill=tk.X)
 
-    #Para hacer zoom y mover el grafo con el ratón
     def on_scroll(event):
-        cur_xlim=ax.get_xlim() #Busca los limites  en x e y
-        cur_ylim=ax.get_ylim()
-
-        xdata=event.xdata #Busca la posición del evento (ratón)
-        ydata=event.ydata
-
+        cur_xlim = ax.get_xlim()
+        cur_ylim = ax.get_ylim()
+        xdata, ydata = event.xdata, event.ydata
         if xdata is None or ydata is None:
-            return #Si el ratón está fuera del grafo no hace nada
-
-        scale_factor=1.2 if event.button == 'up' else 1/1.2 #Cuanto zoom a no zoom hace
-        ax.set_xlim([xdata - (xdata - cur_xlim[0]) * scale_factor,xdata + (cur_xlim[1] - xdata) * scale_factor]) #Hace el zoom centrado en el ratón
-        ax.set_ylim([ydata - (ydata - cur_ylim[0]) * scale_factor,ydata + (cur_ylim[1] - ydata) * scale_factor])
+            return
+        scale = 1.2 if event.button == 'up' else 1 / 1.2
+        ax.set_xlim([xdata - (xdata - cur_xlim[0]) * scale,
+                     xdata + (cur_xlim[1] - xdata) * scale])
+        ax.set_ylim([ydata - (ydata - cur_ylim[0]) * scale,
+                     ydata + (cur_ylim[1] - ydata) * scale])
         fig.canvas.draw_idle()
 
     def on_press(event):
-        if event.button != 3: #Mira si se ha pulsado el botón derecho del ratón
+        if event.button != 3:
             return
         global x0, y0
-        x0, y0 = event.xdata, event.ydata #Guarda la posición del ratón en las coordenadas
+        x0, y0 = event.xdata, event.ydata
 
     def on_motion(event):
         if event.button != 3 or x0 is None:
             return
-        dx = event.xdata - x0 #Calcula la distancia que se mueve el ratón
+        dx = event.xdata - x0
         dy = event.ydata - y0
-        ax.set_xlim(ax.get_xlim() - dx) #Pone unos límites nuevos
-        ax.set_ylim(ax.get_ylim() - dy)
-        fig.canvas.draw() #Redibuja el gráfico
-
+        ax.set_xlim(ax.get_xlim()[0] - dx, ax.get_xlim()[1] - dx)
+        ax.set_ylim(ax.get_ylim()[0] - dy, ax.get_ylim()[1] - dy)
+        fig.canvas.draw_idle()
 
     fig.canvas.mpl_connect('scroll_event', on_scroll)
     fig.canvas.mpl_connect('button_press_event', on_press)
     fig.canvas.mpl_connect('motion_notify_event', on_motion)
-
-
 
 
 def AddNodeInterface():
@@ -159,7 +197,8 @@ def FindShortestPath():
     for node in window_graph.nodes:
         color = 'blue' if node.name in path_node_names else 'gray'
         ax.scatter(node.x, node.y, color=color, s=100)
-        ax.text(node.x, node.y, node.name, fontsize=12, ha='right')
+        txt=ax.text(node.x, node.y, node.name, fontsize=12, ha='right')
+        txt.set_clip_on(True)
 
     # Mostrar todos los segmentos
     for segment in window_graph.segments:
@@ -169,23 +208,22 @@ def FindShortestPath():
                 idx = path.index(segment.origin)
                 if path[idx + 1] == segment.destination:
                     color = 'blue'
-                    lw = 3
+                    lw = 2
                 else:
                     color = 'lightgray'
-                    lw = 1
+                    lw = 0.75
             except (ValueError, IndexError):
                 color = 'lightgray'
-                lw = 1
+                lw = 0.75
         else:
             color = 'lightgray'
-            lw = 1
+            lw = 0.75
 
         # Dibujar flecha
-        ax.annotate("",xy=(segment.destination.x, segment.destination.y),xytext=(segment.origin.x, segment.origin.y),arrowprops=dict(arrowstyle="->", color=color, lw=lw, mutation_scale=15))
-    ax.set_aspect('equal')
-    canvas = FigureCanvasTkAgg(fig, master=fig_frame)
-    canvas.draw()
-    canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        arrow = FancyArrowPatch((segment.origin.x, segment.origin.y),(segment.destination.x, segment.destination.y), arrowstyle='->', color=color,mutation_scale=15, lw=lw, clip_on=True)
+        ax.add_patch(arrow)
+    ax.set_aspect('equal',adjustable='box')
+    ZoomGraph(fig, ax, fig_frame)
 
 
 
@@ -239,13 +277,14 @@ def ActualizeGraphTogger(): #Vuelve a dibujar el gráfico según se cambia la po
 
 
 
+
 # Interfaz gráfica
 window_graph = Graph()
 root = tk.Tk()
 show_distance=tk.BooleanVar(value=False)
 show_nodes=tk.BooleanVar(value=True)
 root.title("Graph viewer")
-root.geometry("1000x600")  # Cambié el tamaño para dar más espacio al gráfico
+root.geometry("1000x600")
 
 # Crear un frame para los botones
 left_panel = ttk.Frame(root, width=250)  # Frame de botones, especificamos un tamaño fijo
