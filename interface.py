@@ -47,21 +47,27 @@ def PlotGraph(G):
     ax.set_title("Graph Visualization")
     for node in G.nodes:
         ax.scatter(node.x, node.y, label=node.name, color='blue')
-        ax.text(node.x+0.1, node.y+0.1, node.name, fontsize=8, ha='right', color='purple')
+        if show_nodes.get():
+            ax.text(node.x+0.1, node.y+0.1, node.name, fontsize=8, ha='right', color='purple')
     for segment in G.segments:
         ax.plot([segment.origin.x, segment.destination.x], [segment.origin.y, segment.destination.y], color='black')
         ax.annotate("", xy=(segment.destination.x, segment.destination.y), xytext=(segment.origin.x, segment.origin.y), arrowprops=dict(arrowstyle="->", color='black', lw=1.5, mutation_scale=15))
-    ax.set_aspect('equal')
+        if show_distance.get(): #Calculamos distancia Eucaldiana
+            dx = segment.destination.x - segment.origin.x
+            dy = segment.destination.y - segment.origin.y
+            distance = round((dx ** 2 + dy ** 2) ** 0.5,2) #Redondea a solo dos decimales
+            mid_x = (segment.origin.x + segment.destination.x) / 2
+            mid_y = (segment.origin.y + segment.destination.y) / 2
+            ax.text(mid_x, mid_y, f"{distance:.2f}", fontsize=8, color='red', ha='center', va='center')
+    ax.set_aspect('equal',adjustable='datalim')
     canvas = FigureCanvasTkAgg(fig, master=fig_frame)  # Inserta el gráfico en tkinter
     canvas.draw()
     canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
 
     #Añadimos una barra de herramientas
     toolbar = NavigationToolbar2Tk(canvas, fig_frame)
     toolbar.update()
     toolbar.pack(side=tk.BOTTOM, fill=tk.X)
-
 
     #Para hacer zoom y mover el grafo con el ratón
     def on_scroll(event):
@@ -220,6 +226,15 @@ def ShowAirSpaceGraph3():
     PlotGraph(window_graph)
 
 
+def ActualizeGraphTogger(): #Vuelve a dibujar el gráfico según se cambia la posición del botón
+    global window_graph
+    PlotGraph(window_graph)
+
+
+
+
+
+
 
 
 
@@ -227,20 +242,21 @@ def ShowAirSpaceGraph3():
 # Interfaz gráfica
 window_graph = Graph()
 root = tk.Tk()
-boton_distancia=tk.BooleanVar(value=False)
+show_distance=tk.BooleanVar(value=False)
+show_nodes=tk.BooleanVar(value=True)
 root.title("Graph viewer")
 root.geometry("1000x600")  # Cambié el tamaño para dar más espacio al gráfico
 
 # Crear un frame para los botones
-left_panel = tk.Frame(root, width=250)  # Frame de botones, especificamos un tamaño fijo
+left_panel = ttk.Frame(root, width=250)  # Frame de botones, especificamos un tamaño fijo
 left_panel.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)  # Coloca los botones a la izquierda
 
 #Creamos pestañas utilizando Notebook
 tabla_control = ttk.Notebook(left_panel)
-pestanya1 = tk.Frame(tabla_control)
-pestanya2 = tk.Frame(tabla_control)
-pestanya3 = tk.Frame(tabla_control)
-pestanya4 = tk.Frame(tabla_control)
+pestanya1 = ttk.Frame(tabla_control)
+pestanya2 = ttk.Frame(tabla_control)
+pestanya3 = ttk.Frame(tabla_control)
+pestanya4 = ttk.Frame(tabla_control)
 tabla_control.add(pestanya1, text="Graphs")
 tabla_control.add(pestanya2, text="Airspace")
 tabla_control.add(pestanya3, text="Extra funcionalities")
@@ -250,51 +266,64 @@ tabla_control.add(pestanya4, text="Team")
 tabla_control.pack(expand=True,fill='both')
 
 # Crear un frame para el gráfico
-fig_frame = tk.Frame(root)
+fig_frame = ttk.Frame(root)
 fig_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)  # Coloca el gráfico a la derecha
 
 # Botones de la interfaz (en el frame de botones)
-show_example_button = tk.Button(pestanya1, text="Show example graph", command=ShowExampleGraph)
+show_example_button = ttk.Button(pestanya1, text="Show example graph", command=ShowExampleGraph)
 show_example_button.pack(pady=10)
 
-show_custom_button = tk.Button(pestanya1, text="Show invented graph", command=ShowCustomGraph)
+show_custom_button = ttk.Button(pestanya1, text="Show invented graph", command=ShowCustomGraph)
 show_custom_button.pack(pady=10)
 
-load_file_button = tk.Button(pestanya1, text="Load graph from file", command=LoadGraph)
+load_file_button = ttk.Button(pestanya1, text="Load graph from file", command=LoadGraph)
 load_file_button.pack(pady=10)
 
-airspace_button1 = tk.Button(pestanya2, text="Catalunya Airspace", command=ShowAirSpaceGraph1)
+airspace_button1 = ttk.Button(pestanya2, text="Catalunya Airspace", command=ShowAirSpaceGraph1)
 airspace_button1.pack(pady=10)
 
-airspace_button2=tk.Button(pestanya2,text="Europe Airspace",command=ShowAirSpaceGraph2)
+airspace_button2=ttk.Button(pestanya2,text="Europe Airspace",command=ShowAirSpaceGraph2)
 airspace_button2.pack(pady=10)
 
-airspace_button3=tk.Button(pestanya2,text="Spain Airspace",command=ShowAirSpaceGraph3)
+airspace_button3=ttk.Button(pestanya2,text="Spain Airspace",command=ShowAirSpaceGraph3)
 airspace_button3.pack(pady=10)
 
-add_node_button = tk.Button(pestanya1, text="Add node", command=AddNodeInterface)
+add_node_button = ttk.Button(pestanya1, text="Add node", command=AddNodeInterface)
 add_node_button.pack(pady=10)
 
-add_node_button = tk.Button(pestanya2, text="Add node", command=AddNodeInterface)
+add_node_button = ttk.Button(pestanya2, text="Add node", command=AddNodeInterface)
 add_node_button.pack(pady=10)
 
-add_segment_button = tk.Button(pestanya1, text="Add segment", command=AddSegmentInterface)
+add_segment_button = ttk.Button(pestanya1, text="Add segment", command=AddSegmentInterface)
 add_segment_button.pack(pady=10)
 
-add_segment_button = tk.Button(pestanya2, text="Add segment", command=AddSegmentInterface)
+add_segment_button = ttk.Button(pestanya2, text="Add segment", command=AddSegmentInterface)
 add_segment_button.pack(pady=10)
 
-select_node_button = tk.Button(pestanya1, text="Select nodes for neighbours", command=SelectNode)
+select_node_button = ttk.Button(pestanya1, text="Select nodes for neighbours", command=SelectNode)
 select_node_button.pack(pady=10)
 
-select_node_button = tk.Button(pestanya2, text="Select nodes for neighbours", command=SelectNode)
+select_node_button = ttk.Button(pestanya2, text="Select nodes for neighbours", command=SelectNode)
 select_node_button.pack(pady=10)
 
-find_path_button = tk.Button(pestanya1, text="Shortest path between nodes", command=FindShortestPath)
+find_path_button = ttk.Button(pestanya1, text="Shortest path between nodes", command=FindShortestPath)
 find_path_button.pack(pady=10)
 
-find_path_button = tk.Button(pestanya2, text="Shortest path between nodes", command=FindShortestPath)
+find_path_button = ttk.Button(pestanya2, text="Shortest path between nodes", command=FindShortestPath)
 find_path_button.pack(pady=10)
+
+show_distance_button = ttk.Checkbutton(pestanya1,text="Show distance between nodes",variable=show_distance,command=ActualizeGraphTogger)
+show_distance_button.pack(pady=10)
+
+show_nodes_button=ttk.Checkbutton(pestanya1,text="Show nodes name",variable=show_nodes,command=ActualizeGraphTogger)
+show_nodes_button.pack(pady=10)
+
+show_distance_button = ttk.Checkbutton(pestanya2,text="Show distance between nodes",variable=show_distance,command=ActualizeGraphTogger)
+show_distance_button.pack(pady=10)
+
+show_nodes_button=ttk.Checkbutton(pestanya2,text="Show nodes name",variable=show_nodes,command=ActualizeGraphTogger)
+show_nodes_button.pack(pady=10)
+
 
 
 
