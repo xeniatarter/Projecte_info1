@@ -13,6 +13,10 @@ from airspace import AirSpace, CreateGraph4, AddNavPoint, AddAirport, AddNavSegm
 from navpoints import NavPoint
 from navsegments import NavSegment
 from navairports import NavAirport
+from PIL import Image, ImageTk
+import simplekml
+import requests
+
 
 
 def ShowExampleGraph():
@@ -392,6 +396,159 @@ def Click(event): #Sirve para mostrar vecinos y shortest path con clicks del rat
         selected_origin = None
 
 
+def ShowFixedImage(): #Mostra la imatge del grup
+    image_path = "C:/Users/Gaël/Downloads/aaaa.png"
+
+    try:
+        img = Image.open(image_path)
+        img = img.resize((400, 400), Image.Resampling.LANCZOS)
+        img_tk = ImageTk.PhotoImage(img)
+
+        for widget in fig_frame.winfo_children():
+            widget.destroy()
+
+        label = tk.Label(fig_frame, image=img_tk)
+        label.image = img_tk
+        label.pack(expand=True)
+    except Exception as e:
+        messagebox.showerror("Error", f"Could not load image: {e}")
+
+
+def ConvertToKML(): #Converteix les coordenades a kml per posar a google earth
+    global window_graph
+    output_file = filedialog.asksaveasfilename(defaultextension=".kml",filetypes=[("KML Files", "*.kml")],title="Save KML File")
+
+    if not output_file:
+        return
+
+    kml = simplekml.Kml()
+
+    for node in window_graph.nodes:
+        kml.newpoint(name=node.name,coords=[(node.x, node.y)],description=f"Navigation Point: {node.name}")
+
+    for segment in window_graph.segments:
+        line = kml.newlinestring(name=f"{segment.origin.name}-{segment.destination.name}", coords=[(segment.origin.x, segment.origin.y),(segment.destination.x, segment.destination.y)],description=f"Navigation Segment")
+        line.style.linestyle.color = simplekml.Color.red
+        line.style.linestyle.width = 2
+
+    kml.save(output_file)
+
+
+def GetAirportWeather(): #Dóna info sobre el weather del aeroport
+    airport_code = simpledialog.askstring("Airport Weather", "Enter airport ICAO code",
+                                          parent=root)
+    if not airport_code:
+        return
+
+    try:
+        url = f"https://aviationweather.gov/api/data/metar?ids={airport_code}&format=json"
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
+        if not data:
+            messagebox.showerror("Error", f"No weather data found for {airport_code}")
+            return
+
+        metar = data[0]['rawOb']
+        observation_time = data[0]['receiptTime']
+
+        weather_window = tk.Toplevel(root)
+        weather_window.title(f"Live Weather for {airport_code}")
+        weather_window.geometry("600x400")
+
+        main_frame = ttk.Frame(weather_window, padding="10")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        title_label = ttk.Label(main_frame, text=f"Current meteorology for {airport_code}🛫", font=('Helvetica', 20, 'bold'))
+        title_label.pack(pady=(0, 10))
+
+        metar_frame = ttk.LabelFrame(main_frame, text="Raw METAR", padding="10")
+        metar_frame.pack(fill=tk.X, pady=5)
+
+        metar_text = tk.Text(metar_frame, height=3, wrap=tk.WORD, font=('Courier', 16), bg='#f0f0f0', padx=5, pady=5)
+        metar_text.insert(tk.END, f"{observation_time}\n{metar}")
+        metar_text.config(state=tk.DISABLED)
+        metar_text.pack(fill=tk.X)
+
+        decode_frame = ttk.LabelFrame(main_frame, text="Decoded Information", padding="10")
+        decode_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+
+        decoded_text = tk.Text(decode_frame, wrap=tk.WORD, padx=5, pady=5)
+
+        # Configure text tags for styling
+        decoded_text.tag_configure('header', foreground='blue', font=('Helvetica', 20, 'bold'))
+        decoded_text.tag_configure('important', foreground='red')
+        decoded_text.tag_configure('normal', font=('Helvetica', 18))
+
+        try:
+
+            decoded_text.insert(tk.END, "Observation Time:\n", 'header')
+            decoded_text.insert(tk.END, f"{observation_time} (UTC)\n\n", 'normal')
+
+            decoded_text.insert(tk.END, "Wind:\n", 'header')
+            if 'KT' in metar:
+                wind_part = metar.split('KT')[0].split()[-1] + 'KT'
+                wind_dir = wind_part[:3]
+                wind_speed = wind_part[3:5]
+                decoded_text.insert(tk.END, f"Direction: {wind_dir}°\nSpeed: {wind_speed} knots\n\n", 'normal')
+
+            decoded_text.insert(tk.END, "Visibility:\n", 'header')
+            if '9999' in metar:
+                decoded_text.insert(tk.END, "10km or more\n\n", 'normal')
+            else:
+                vis_part = [p for p in metar.split() if 'SM' in p or p.isdigit()][0]
+                decoded_text.insert(tk.END, f"{vis_part}\n\n", 'normal')
+
+            decoded_text.insert(tk.END, "Weather Phenomena:\n", 'header')
+            wx_codes = {'RA': 'Rain', 'SN': 'Snow', 'TS': 'Thunderstorm', 'FG': 'Fog',
+                        'BR': 'Mist', 'HZ': 'Haze', 'DU': 'Dust', 'GR': 'Hail'}
+            wx_present = False
+            for code, desc in wx_codes.items():
+                if code in metar:
+                    decoded_text.insert(tk.END, f"{desc} ", 'important')
+                    wx_present = True
+            if not wx_present:
+                decoded_text.insert(tk.END, "No significant weather", 'normal')
+            decoded_text.insert(tk.END, "\n\n", 'normal')
+
+            decoded_text.insert(tk.END, "Clouds:\n", 'header')
+            cloud_codes = {'FEW': 'Few', 'SCT': 'Scattered', 'BKN': 'Broken', 'OVC': 'Overcast'}
+            cloud_info = []
+            for part in metar.split():
+                if part[:3] in cloud_codes:
+                    cloud_info.append(f"{cloud_codes[part[:3]]} at {part[3:]}00 ft")
+            if cloud_info:
+                decoded_text.insert(tk.END, "\n".join(cloud_info) + "\n\n", 'normal')
+            else:
+                decoded_text.insert(tk.END, "Clear skies\n\n", 'normal')
+
+            decoded_text.insert(tk.END, "Temperature:\n", 'header')
+            if '/' in metar:
+                temp_part = [p for p in metar.split() if '/' in p][0]
+                temp, dewpoint = temp_part.split('/')
+                decoded_text.insert(tk.END, f"Air: {temp}°C\nDew Point: {dewpoint}°C\n\n", 'normal')
+
+            decoded_text.insert(tk.END, "Pressure:\n", 'header')
+            if 'Q' in metar:
+                q_part = [p for p in metar.split() if p.startswith('Q')][0]
+                pressure = q_part[1:]
+                decoded_text.insert(tk.END, f"{pressure} hPa\n", 'normal')
+
+        except Exception as e:
+            decoded_text.insert(tk.END, f"\nError parsing METAR details: {str(e)}", 'important')
+
+        decoded_text.config(state=tk.DISABLED)
+        decoded_text.pack(fill=tk.BOTH, expand=True)
+
+        scrollbar = ttk.Scrollbar(decode_frame, orient=tk.VERTICAL, command=decoded_text.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        decoded_text.config(yscrollcommand=scrollbar.set)
+
+    except requests.exceptions.RequestException as e:
+        messagebox.showerror("Error", f"Failed to fetch weather data: {e}")
+    except (KeyError, IndexError):
+        messagebox.showerror("Error", "Invalid or unavailable airport code")
 
 
 
@@ -483,6 +640,9 @@ show_distance_button.pack(pady=10)
 show_nodes_button=ttk.Checkbutton(pestanya1,text="Show nodes name",variable=show_nodes,command=ActualizeGraphTogger)
 show_nodes_button.pack(pady=10)
 
+weather_button = ttk.Button(pestanya2, text="Get Airport Weather⛅️", command=GetAirportWeather)
+weather_button.pack(pady=10)
+
 show_distance_button = ttk.Checkbutton(pestanya2,text="Show distance between nodes",variable=show_distance,command=ActualizeGraphTogger)
 show_distance_button.pack(pady=10)
 
@@ -494,6 +654,12 @@ show_sids_button.pack(pady=10)
 
 show_stars_button=ttk.Checkbutton(pestanya2,text="Show STARs",variable=show_stars,command=lambda:PlotGraph(window_graph))
 show_stars_button.pack(pady=10)
+
+show_team_image_button = ttk.Button(pestanya4, text="Show team photo", command=ShowFixedImage)
+show_team_image_button.pack(pady=10)
+
+#We already converted to KML once so we erased the buttons to do it again
+
 
 
 
