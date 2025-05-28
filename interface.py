@@ -82,23 +82,45 @@ def PlotGraph(G):
     ax.set_title("Graph Visualization")
 
     for node in G.nodes:
-        ax.scatter(node.x, node.y, color='blue')
+        #Oculta SIDs o STARs si está desmarcado en el botón
+        if node.name.endswith('.D') and not show_sids.get():
+            continue
+        if node.name.endswith('.A') and not show_stars.get():
+            continue
+        if node.name.endswith('.D'):
+            color = 'springgreen'
+        elif node.name.endswith('.A'):
+            color = 'fuchsia'
+        else:
+            color = 'blue'
+
+        ax.scatter(node.x, node.y, color=color)
         if show_nodes.get():
             txt = ax.text(node.x + 0.1, node.y + 0.1, node.name, fontsize=8, ha='right', color='purple')
-            txt.set_clip_on(True)  #Para recortar el texto que sale al hacer zoom
+            txt.set_clip_on(True)
+
 
     for segment in G.segments:
-        arrow = FancyArrowPatch((segment.origin.x, segment.origin.y),(segment.destination.x, segment.destination.y),arrowstyle='->',color='black',mutation_scale=15,lw=1.5,clip_on=True)
-        ax.add_patch(arrow)
+        # Si el origen o destino es SID/STAR y está oculto, no dibujar el segmento
+        if (segment.origin.name.endswith('.D') and not show_sids.get()) or \
+                (segment.origin.name.endswith('.A') and not show_stars.get()) or \
+                (segment.destination.name.endswith('.D') and not show_sids.get()) or \
+                (segment.destination.name.endswith('.A') and not show_stars.get()):
+            continue
 
-        if show_distance.get(): #Calculamos distancia Eucaldiana
+        arrow = FancyArrowPatch((segment.origin.x, segment.origin.y), (segment.destination.x, segment.destination.y),
+                                arrowstyle='->', color='black', mutation_scale=15, lw=1.5, clip_on=True)
+        ax.add_patch(arrow)
+        if show_distance.get():  # Calculamos distancia Eucaldiana
             dx = segment.destination.x - segment.origin.x
             dy = segment.destination.y - segment.origin.y
-            distance = round((dx ** 2 + dy ** 2) ** 0.5, 2) #Redondea a solo dos decimales
+            distance = round((dx ** 2 + dy ** 2) ** 0.5, 2)  # Redondea a solo dos decimales
             mid_x = (segment.origin.x + segment.destination.x) / 2
             mid_y = (segment.origin.y + segment.destination.y) / 2
             dist_txt = ax.text(mid_x, mid_y, f"{distance:.2f}", fontsize=8, color='red', ha='center', va='center')
             dist_txt.set_clip_on(True)
+
+
 
     ax.set_aspect('equal', adjustable='box')
     ZoomGraph(fig, ax, fig_frame)
@@ -241,6 +263,8 @@ def AirspacetoGraph(g,a):
                 destination = navPoint.name
         AddSegment(g, origin, destination)
 
+
+
 #Mostramos el grafo en función de los ficheros
 def ShowAirSpaceGraph1():
     global window_graph
@@ -248,6 +272,7 @@ def ShowAirSpaceGraph1():
     a = CreateGraph4("Cat_nav.txt","Cat_seg.txt","Cat_aer.txt")
     AirspacetoGraph(window_graph, a)
     PlotGraph(window_graph)
+
 
 def ShowAirSpaceGraph2():
     global window_graph
@@ -283,6 +308,8 @@ window_graph = Graph()
 root = tk.Tk()
 show_distance=tk.BooleanVar(value=False)
 show_nodes=tk.BooleanVar(value=True)
+show_sids = tk.BooleanVar(value=True)
+show_stars = tk.BooleanVar(value=True)
 root.title("Graph viewer")
 root.geometry("1000x600")
 
@@ -362,6 +389,18 @@ show_distance_button.pack(pady=10)
 
 show_nodes_button=ttk.Checkbutton(pestanya2,text="Show nodes name",variable=show_nodes,command=ActualizeGraphTogger)
 show_nodes_button.pack(pady=10)
+
+show_sids_button=ttk.Checkbutton(pestanya2,text="Show SIDs",variable=show_sids,command=lambda:PlotGraph(window_graph))
+show_sids_button.pack(pady=10)
+
+show_stars_button=ttk.Checkbutton(pestanya2,text="Show STARs",variable=show_stars,command=lambda:PlotGraph(window_graph))
+show_stars_button.pack(pady=10)
+
+
+
+
+
+
 
 
 
