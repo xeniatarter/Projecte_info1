@@ -31,7 +31,7 @@ def LoadGraph():
     PlotGraph(window_graph)
 
 
-def SelectNode():
+def SelectNode(): #Nos da pintados de otro color los nodos vecinos y los segmentos que los une
     global window_graph
     node_name = simpledialog.askstring("Entry", "Introduce the node name:", parent=root)
     neighbors = GetNeighbors(window_graph, node_name)
@@ -74,7 +74,7 @@ def SelectNode():
     ZoomGraph(fig, ax, fig_frame)
 
 
-def PlotGraph(G):
+def PlotGraph(G): #Dibuja los nodos y segmentos, si se trata de un SID o STAR los pone de otro color
     for widget in fig_frame.winfo_children():
         widget.destroy() #Elimina cualquier gráfico anterior
 
@@ -126,11 +126,11 @@ def PlotGraph(G):
     ZoomGraph(fig, ax, fig_frame)
 
 
-def ZoomGraph(fig, ax, parent_frame):
+def ZoomGraph(fig, ax, parent_frame): #Permite hacer zoom a los gráficos
     canvas = FigureCanvasTkAgg(fig, master=parent_frame)
     canvas.draw()
     canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
+    canvas.mpl_connect('button_press_event', Click)
     toolbar = NavigationToolbar2Tk(canvas, parent_frame)
     toolbar.update()
     toolbar.pack(side=tk.BOTTOM, fill=tk.X)
@@ -168,7 +168,7 @@ def ZoomGraph(fig, ax, parent_frame):
     fig.canvas.mpl_connect('motion_notify_event', on_motion)
 
 
-def AddNodeInterface():
+def AddNodeInterface(): #Sirve para poder añadir nodos
     global window_graph
     name = simpledialog.askstring("New node", "Node name:", parent=root)
     x = simpledialog.askfloat("New node", "X-coordinate:", parent=root)
@@ -182,7 +182,7 @@ def AddNodeInterface():
     else:
         messagebox.showwarning("Cancelled", "Node not added.")
 
-def AddSegmentInterface():
+def AddSegmentInterface(): #Sirve para poder añadir segmentos
     global window_graph
     origin_node = simpledialog.askstring("New segment", "Origin node:", parent=root)
     destination_node = simpledialog.askstring("New segment", "Destination node:", parent=root)
@@ -197,7 +197,7 @@ def AddSegmentInterface():
         messagebox.showwarning("Cancelled", "Segment not added.")
 
 
-# Función para encontrar el camino más corto, delegando en path.py
+# Función para encontrar el camino más corto
 def FindShortestPath():
     global window_graph
     start_name = simpledialog.askstring("Find path", "Origin node:", parent=root)
@@ -208,25 +208,19 @@ def FindShortestPath():
         messagebox.showinfo("Without path", "There is no path between the selected nodes")
         return
 
-    # Mostrar el camino en un gráfico
     for widget in fig_frame.winfo_children():
         widget.destroy()
-
-    fig, ax = plot.subplots(figsize=(6, 6))  # Dibujar el gráfico con el camino resaltado
+    fig, ax = plot.subplots(figsize=(6, 6))
     ax.set_title(f"Shortest path from {start_name} to {end_name}")
-
     path_node_names = [n.name for n in path]
     for node in window_graph.nodes:
         color = 'blue' if node.name in path_node_names else 'gray'
         ax.scatter(node.x, node.y, color=color, s=100)
         txt=ax.text(node.x, node.y, node.name, fontsize=12, ha='right')
         txt.set_clip_on(True)
-
-    # Mostrar todos los segmentos
     for segment in window_graph.segments:
         if segment.origin in path and segment.destination in path:
             try:
-                # Verificamos si es parte directa del camino
                 idx = path.index(segment.origin)
                 if path[idx + 1] == segment.destination:
                     color = 'blue'
@@ -240,8 +234,6 @@ def FindShortestPath():
         else:
             color = 'lightgray'
             lw = 0.75
-
-        # Dibujar flecha
         arrow = FancyArrowPatch((segment.origin.x, segment.origin.y),(segment.destination.x, segment.destination.y), arrowstyle='->', color=color,mutation_scale=15, lw=lw, clip_on=True)
         ax.add_patch(arrow)
     ax.set_aspect('equal',adjustable='box')
@@ -292,6 +284,113 @@ def ShowAirSpaceGraph3():
 def ActualizeGraphTogger(): #Vuelve a dibujar el gráfico según se cambia la posición del botón
     global window_graph
     PlotGraph(window_graph)
+
+
+selected_origin = None  # Variable global que guarda el node clickat com a origen
+
+def Click(event): #Sirve para mostrar vecinos y shortest path con clicks del ratón
+    global selected_origin, window_graph
+    if event.xdata is None or event.ydata is None:
+        return
+    click_point = (event.xdata, event.ydata)
+    threshold = 0.5
+    closest_node = None
+    min_dist = float('inf')
+    for node in window_graph.nodes:
+        dist = ((node.x - click_point[0])**2 + (node.y - click_point[1])**2)**0.5
+        if dist < min_dist and dist < threshold:
+            min_dist = dist
+            closest_node = node
+
+    if closest_node is None:
+        return
+
+    if event.button == 1:  # Clic izquierdo
+        selected_origin = closest_node
+        neighbors = closest_node.neighbors
+
+        if neighbors:
+            neighbor_names = [n.name for n in neighbors]
+            messagebox.showinfo("Neighbors", f"Neighbors of {closest_node.name}: {', '.join(neighbor_names)}")
+        else:
+            messagebox.showinfo("Neighbors", f"No neighbors found for node {closest_node.name}")
+
+        for widget in fig_frame.winfo_children():
+            widget.destroy()
+
+        fig, ax = plot.subplots(figsize=(6, 6))
+        ax.set_title(f"Neighbors of {closest_node.name}")
+
+        for node in window_graph.nodes:
+            if node == closest_node:
+                color = 'blue'
+            elif node in neighbors:
+                color = 'lightskyblue'
+            else:
+                color = 'lightgray'
+            ax.scatter(node.x, node.y, color=color, s=100)
+            ax.text(node.x, node.y, node.name, fontsize=12, ha='right', clip_on=True)
+
+        for segment in window_graph.segments:
+            if (segment.origin == closest_node and segment.destination in neighbors) or \
+               (segment.destination == closest_node and segment.origin in neighbors):
+                seg_color = 'lightskyblue'
+                lw = 2
+            else:
+                seg_color = 'lightgray'
+                lw = 1
+            arrow = FancyArrowPatch((segment.origin.x, segment.origin.y), (segment.destination.x, segment.destination.y),
+                                    arrowstyle='->', color=seg_color, mutation_scale=15, lw=lw, clip_on=True)
+            ax.add_patch(arrow)
+        ax.set_aspect('equal', adjustable='box')
+        ZoomGraph(fig, ax, fig_frame)
+
+    elif event.button == 3:  # Clic derecho
+        if selected_origin is None:
+            messagebox.showinfo("Info", "Select origin node first with left click.")
+            return
+        selected_destination = closest_node
+        path = find_shortest_path(window_graph, selected_origin.name, selected_destination.name)
+
+        if not path:
+            messagebox.showinfo("Without path", "There is no path between the selected nodes")
+        else:
+            for widget in fig_frame.winfo_children():
+                widget.destroy()
+
+            fig, ax = plot.subplots(figsize=(6, 6))
+            ax.set_title(f"Shortest path from {selected_origin.name} to {selected_destination.name}")
+
+            path_node_names = [n.name for n in path]
+            for node in window_graph.nodes:
+                color = 'blue' if node.name in path_node_names else 'gray'
+                ax.scatter(node.x, node.y, color=color, s=100)
+                ax.text(node.x, node.y, node.name, fontsize=12, ha='right', clip_on=True)
+
+            for segment in window_graph.segments:
+                if segment.origin in path and segment.destination in path:
+                    try:
+                        idx = path.index(segment.origin)
+                        if path[idx + 1] == segment.destination:
+                            color = 'blue'
+                            lw = 2
+                        else:
+                            color = 'lightgray'
+                            lw = 0.75
+                    except (ValueError, IndexError):
+                        color = 'lightgray'
+                        lw = 0.75
+                else:
+                    color = 'lightgray'
+                    lw = 0.75
+
+                arrow = FancyArrowPatch((segment.origin.x, segment.origin.y), (segment.destination.x, segment.destination.y),
+                                        arrowstyle='->', color=color, mutation_scale=15, lw=lw, clip_on=True)
+                ax.add_patch(arrow)
+            ax.set_aspect('equal', adjustable='box')
+            ZoomGraph(fig, ax, fig_frame)
+        selected_origin = None
+
 
 
 
@@ -395,13 +494,6 @@ show_sids_button.pack(pady=10)
 
 show_stars_button=ttk.Checkbutton(pestanya2,text="Show STARs",variable=show_stars,command=lambda:PlotGraph(window_graph))
 show_stars_button.pack(pady=10)
-
-
-
-
-
-
-
 
 
 
