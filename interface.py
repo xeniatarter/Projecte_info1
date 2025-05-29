@@ -265,7 +265,7 @@ def AirspacetoGraph(g,a):
 def ShowAirSpaceGraph1():
     global window_graph
     window_graph = Graph()
-    a = CreateGraph4("Cat_nav.txt","Cat_seg.txt","Cat_aer.txt")
+    a = CreateGraph4("Cat_nav.txt", "Cat_seg.txt", "Cat_aer.txt")
     AirspacetoGraph(window_graph, a)
     PlotGraph(window_graph)
 
@@ -397,7 +397,7 @@ def Click(event): #Sirve para mostrar vecinos y shortest path con clicks del rat
 
 
 def ShowFixedImage(): #Mostra la imatge del grup
-    image_path = "C:/Users/Gaël/Downloads/aaaa.png"
+    image_path = "grupo.png"
 
     try:
         img = Image.open(image_path)
@@ -550,6 +550,17 @@ def GetAirportWeather(): #Dóna info sobre el weather del aeroport
     except (KeyError, IndexError):
         messagebox.showerror("Error", "Invalid or unavailable airport code")
 
+def on_tab_change(event):
+    selected_tab = event.widget.index("current")
+
+    for widget in fig_frame.winfo_children():
+        widget.destroy()
+
+    if selected_tab == 2:
+        label = tk.Label(fig_frame, text="EXTRA FUNCTIONALITIES: \n\n\n 1.Buttons to show/hide nodes, segments, SIDs and STARs \n\n 2.Button for the weather of each airport \n\n 3.Try to zoom the graph by using your mouse \n\n 4.Click a node with the left button of the mouse to see it's neighbours \n then click another node with the right button of your mouse to see \n the shortest path between both nodes", font=("Arial", 14))
+        label.pack(expand=True)
+
+
 
 
 
@@ -575,14 +586,17 @@ left_panel.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)  # Coloca los botones
 
 #Creamos pestañas utilizando Notebook
 tabla_control = ttk.Notebook(left_panel)
+tabla_control.bind("<<NotebookTabChanged>>", on_tab_change)
 pestanya1 = ttk.Frame(tabla_control)
 pestanya2 = ttk.Frame(tabla_control)
 pestanya3 = ttk.Frame(tabla_control)
 pestanya4 = ttk.Frame(tabla_control)
 tabla_control.add(pestanya1, text="Graphs")
 tabla_control.add(pestanya2, text="Airspace")
-tabla_control.add(pestanya3, text="Extra funcionalities")
+tabla_control.add(pestanya3, text="Extra functionalities")
 tabla_control.add(pestanya4, text="Team")
+tabla_control.bind("<<NotebookTabChanged>>", on_tab_change)
+
 
 #Mostrar el notebook (pestañas)
 tabla_control.pack(expand=True,fill='both')
