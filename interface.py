@@ -672,6 +672,12 @@ show_stars_button.pack(pady=10)
 show_team_image_button = ttk.Button(pestanya4, text="Show team photo", command=ShowFixedImage)
 show_team_image_button.pack(pady=10)
 
+kml_button = ttk.Button(pestanya1, text="Save KML", command=ConvertToKML)
+kml_button.pack(pady=10)
+
+kml_button = ttk.Button(pestanya2, text="Save KML️", command=ConvertToKML)
+kml_button.pack(pady=10)
+
 #We already converted to KML once so we erased the buttons to do it again
 
 
